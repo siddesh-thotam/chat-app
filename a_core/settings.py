@@ -9,7 +9,7 @@ env = Env()
 env.read_env(os.path.join(BASE_DIR, ".env"))
 
 ENVIRONMENT = env('ENVIRONMENT', default="production")
-ENVIRONMENT = "development"
+# ENVIRONMENT = "development"
 
 
 
@@ -29,9 +29,9 @@ else:
     DEBUG = False
 
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chat-app-mvol.onrender.com']
 
-CSRF_TRUSTED_ORIGINS = [ 'https://*' ]
+CSRF_TRUSTED_ORIGINS = [ 'https://chat-app-mvol.onrender.com' ]
 
 
 # Application definition
