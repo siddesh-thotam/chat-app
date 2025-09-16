@@ -1,5 +1,7 @@
 from django.urls import path
 from .views import chat_view , get_or_create_chatroom, create_groupchat,chatroom_edit_view , chatroom_delete_view,leave_group_view,chat_file_upload
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('' , chat_view , name="home"),
@@ -11,3 +13,6 @@ urlpatterns = [
     path('chat/leave/<chatroom_name>', leave_group_view, name="chatroom-leave"),
     path('chat/fileupload/<chatroom_name>', chat_file_upload , name="chat-file-upload")
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
