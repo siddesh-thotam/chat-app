@@ -209,6 +209,22 @@ class ChatroomConsumer(AsyncWebsocketConsumer):
             "online_count": event["online_count"],
         }))
 
+    # consumers.py - Add this method to ChatroomConsumer class
+    async def message_handler(self, event):
+        """Handle message_handler type messages (for file uploads)"""
+        try:
+            message_data = await self.get_message_data_sync(event["message_id"])
+            
+            if not message_data:
+                print(f"[WARNING] Empty or invalid message with ID {event.get('message_id')}")
+                return
+                
+            message_data["type"] = "message"
+            await self.send(text_data=json.dumps(message_data))
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to handle message: {e}")
+
 
 class OnlineStatusConsumer(AsyncWebsocketConsumer):
     """Online status consumer for production"""

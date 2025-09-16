@@ -241,7 +241,7 @@ def chat_file_upload(request , chatroom_name):
             message.save()
             channel_layer = get_channel_layer()
             event={
-                'type' : 'message_handler',
+                'type' : 'chat.message',
                 'message_id':message.id,
             }
             async_to_sync(channel_layer.group_send)(
