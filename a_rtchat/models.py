@@ -29,7 +29,7 @@ class GroupMessage(models.Model):
     group = models.ForeignKey(ChatGroup , related_name='chat_messages' , on_delete=models.CASCADE)
     author = models.ForeignKey(settings.AUTH_USER_MODEL , on_delete=models.CASCADE)
     body = models.CharField(max_length=300 , blank=True , null=True)
-    file = CloudinaryField(upload_to='files/', blank=True , null=True)
+    file = CloudinaryField('file', folder='chat_files/', blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     delivered_to = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='delivered_messages', blank=True)
     seen_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='seen_messages', blank=True)
@@ -41,6 +41,12 @@ class GroupMessage(models.Model):
             return os.path.basename(self.file.name)
         else:
             return None
+    
+    @property
+    def file_url(self):
+        if self.file:
+            return self.file.url
+        return None
 
 
     def __str__(self):
