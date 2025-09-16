@@ -5,6 +5,8 @@ import shortuuid
 from django.contrib.auth.models import User
 import os
 from django.core.exceptions import ValidationError
+from cloudinary.models import CloudinaryField
+
 # Create your models here.
 
 class ChatGroup(models.Model):
@@ -27,7 +29,7 @@ class GroupMessage(models.Model):
     group = models.ForeignKey(ChatGroup , related_name='chat_messages' , on_delete=models.CASCADE)
     author = models.ForeignKey(settings.AUTH_USER_MODEL , on_delete=models.CASCADE)
     body = models.CharField(max_length=300 , blank=True , null=True)
-    file = models.FileField(upload_to='files/', blank=True , null=True)
+    file = CloudinaryField(upload_to='files/', blank=True , null=True)
     created = models.DateTimeField(auto_now_add=True)
     delivered_to = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='delivered_messages', blank=True)
     seen_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='seen_messages', blank=True)
