@@ -1,0 +1,633 @@
+{% extends 'layouts/blank.html' %}
+
+{% block content %}
+
+<div class="max-w-5xl mx-auto my-6 px-2 sm:px-4 lg:px-6">
+    <!-- ...existing code... -->
+    <!-- Main Chat Content -->
+    <div>
+    {% if chat_group.groupchat_name %}
+    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+            <div class="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center shadow-lg">
+                <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"/>
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-white text-xl font-bold">{{ chat_group.groupchat_name|default:chat_group.group_name }}</h2>
+                <!-- Group Member Dropdown -->
+                <div x-data="{ open: false }" class="relative">
+                    <button @click="open = !open" @click.away="open = false" class="flex items-center gap-2 px-3 py-1 rounded-lg bg-gray-800 hover:bg-red-600 text-gray-300 hover:text-white transition-all duration-300">
+                        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.23 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                        <span>{{ chat_group.members.count }} members</span>
+                    </button>
+                    <div x-show="open" x-cloak class="absolute left-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-xl shadow-lg z-50 py-2 max-h-64 overflow-y-auto">
+                        <ul class="flex flex-col gap-1">
+                            {% for member in chat_group.members.all %}
+                                <li>
+                                    <a href="{% url 'profile' member.username %}" class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-red-600/80 hover:text-white transition-all duration-200 font-medium whitespace-nowrap">
+                                        <img src="{{ member.profile.avatar }}" class="w-6 h-6 rounded-full object-cover border border-gray-600 mr-2" />
+                                        <span>{{ member.profile.name|default:member.username }}</span>
+                                    </a>
+                                </li>
+                            {% empty %}
+                                <li class="px-4 py-2 text-gray-500">No members found.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            {% if user == chat_group.admin %}
+            <a href="{% url 'edit-chatroom' chat_group.group_name %}" class="group">
+                <div class="p-3 bg-gray-800 hover:bg-red-600 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-red-500/25">
+                    <svg class="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-300" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/>
+                    </svg>
+                </div>
+            </a>
+            {% else %}
+            {% if chat_group.group_name != 'public-chat' %}
+            <a href="{% url 'chatroom-leave' chat_group.group_name %}" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-red-500/25 font-medium">
+                Leave Group
+            </a>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Animated Background -->
+    <div id="bg-animation" class="fixed inset-0 -z-10"></div>
+
+    <div id="chat_window" class="h-[75vh] sm:h-[80vh] lg:h-[85vh] flex flex-col bg-gray-900/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-800/50 relative overflow-hidden max-w-4xl mx-auto">
+        <!-- Floating particles background -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="floating-particles"></div>
+        </div>
+
+    <!-- Header Section - Centered -->
+    <div id="chat_header" class="flex flex-col justify-center items-center bg-transparent p-3 sm:p-4 rounded-t-2xl sm:rounded-t-3xl border-b border-gray-700/30 sticky top-0 z-10 min-h-[60px] sm:min-h-[70px]">
+            {% if other_user %}
+            <div class="flex items-center gap-3">
+                <div class="relative flex-shrink-0">
+                    <img src="{{ other_user.profile.avatar }}" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-gray-600 shadow-lg" />
+                    <div id="online-icon" class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900 shadow-lg"></div>
+                </div>
+                <div class="min-w-0">
+                    <span class="font-bold text-white text-lg sm:text-xl block truncate">{{ other_user.profile.name }}</span>
+                    <div class="text-sm text-gray-400 truncate">@{{ other_user.username }}</div>
+                </div>
+            </div>
+            {% elif chat_group and chat_group.groupchat_name %}
+            <div class="w-full flex justify-center">
+                <ul id="groupchat-members" class="flex gap-2 sm:gap-3 items-center justify-center overflow-x-auto py-2 px-4">
+                    {% if chat_group.group_name == 'public-chat' %}
+                        {% for member in online_members %}
+                        <li class="flex-shrink-0">
+                            <a href="{% url 'profile' member.username %}" class="group flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-800/50 transition-all duration-300">
+                                <div class="relative">
+                                    <img src="{{ member.profile.avatar }}" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-gray-600 group-hover:border-red-500 transition-colors duration-300 shadow-lg" />
+                                    <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
+                                </div>
+                                <span class="text-xs text-gray-400 group-hover:text-white transition-colors duration-300 max-w-[60px] sm:max-w-[70px] truncate text-center">
+                                    {{ member.profile.name|slice:":8" }}
+                                </span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    {% else %}
+                        {% for member in chat_group.members.all %}
+                        <li class="flex-shrink-0">
+                            <a href="{% url 'profile' member.username %}" class="group flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-800/50 transition-all duration-300">
+                                <div class="relative">
+                                    <img src="{{ member.profile.avatar }}" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-gray-600 group-hover:border-red-500 transition-colors duration-300 shadow-lg" />
+                                    <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
+                                </div>
+                                <span class="text-xs text-gray-400 group-hover:text-white transition-colors duration-300 max-w-[60px] sm:max-w-[70px] truncate text-center">
+                                    {{ member.profile.name|slice:":8" }}
+                                </span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+            </div>
+            {% else %}
+            <div class="flex items-center gap-2 text-emerald-400">
+                <div class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" aria-hidden="true"></div>
+                <span class="text-sm sm:text-base">Users online in chat</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Messages Container -->
+        <div id="chat_container" class="overflow-y-auto flex-1 relative scroll-smooth">
+            <ul id="chat_messages" class="flex flex-col gap-2 sm:gap-3 p-3 sm:p-4 lg:p-6">
+                {% for message in chat_messages %}
+                {% include 'a_rtchat/chat_message.html' %}
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Message Input Area -->
+        <div class="sticky bottom-0 z-10 p-3 sm:p-4 bg-gradient-to-t from-gray-900 via-gray-900/95 to-transparent rounded-b-2xl sm:rounded-b-3xl border-t border-gray-700/30">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <!-- Message Input Form -->
+                <form id="chat_message_form" class="relative flex-1" autocomplete="off" onsubmit="return false;">
+                    <div class="relative flex items-center">
+                        <input
+                            id="chat_input"
+                            type="text"
+                            name="body"
+                            placeholder="Type your message..."
+                            class="flex-1 p-3 sm:p-4 pr-14 bg-gray-800/60 backdrop-blur-sm border border-gray-700/50 rounded-xl sm:rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all duration-300 shadow-lg text-sm sm:text-base"
+                            maxlength="300"
+                        />
+                        <button type="submit" class="absolute right-2 p-2 sm:p-2.5 bg-red-600 hover:bg-red-700 rounded-full transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-red-500/25 flex-shrink-0">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white transform rotate-45" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- File Upload Form -->
+                <form id="chat_file_form" enctype="multipart/form-data" class="flex items-center gap-2 sm:gap-3"
+                      hx-post="{% url 'chat-file-upload' chat_group.group_name %}"
+                      hx-target="#chat_messages"
+                      hx-swap="beforeend"
+                      _="on htmx:beforeSend reset() me">
+                    {% csrf_token %}
+                    <div class="relative">
+                        <input type="file" name="file" id="id_file" class="hidden">
+                        <label for="id_file" class="flex items-center gap-2 p-3 bg-gray-800/80 border border-gray-700 rounded-xl cursor-pointer hover:bg-gray-700/80 transition-all duration-300 text-gray-300 hover:text-white">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                                <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                            </svg>
+                            <span class="text-sm font-medium hidden sm:inline">Attach</span>
+                        </label>
+                    </div>
+                    <button type="submit" class="px-3 sm:px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-red-500/25 font-medium">
+                        <span class="hidden sm:inline">Send</span>
+                        <svg class="w-5 h-5 sm:hidden" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</wrapper>
+
+<style>
+    /* Custom animations and styles */
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-10px) rotate(2deg); }
+    }
+
+    @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
+        50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
+    }
+
+    @keyframes slideInFromRight {
+        from {
+            opacity: 0;
+            transform: translateX(100px) scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+
+    @keyframes slideInFromLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-100px) scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+
+    .message-sent {
+        animation: slideInFromRight 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .message-received {
+        animation: slideInFromLeft 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .floating-particles::before,
+    .floating-particles::after {
+        content: '';
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: rgba(239, 68, 68, 0.3);
+        border-radius: 50%;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    .floating-particles::before {
+        top: 20%;
+        left: 20%;
+        animation-delay: -2s;
+    }
+
+    .floating-particles::after {
+        top: 60%;
+        right: 20%;
+        animation-delay: -4s;
+        background: rgba(34, 197, 94, 0.3);
+    }
+
+    /* Scrollbar styling */
+    #chat_container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #chat_container::-webkit-scrollbar-track {
+        background: rgba(31, 41, 55, 0.5);
+        border-radius: 10px;
+    }
+
+    #chat_container::-webkit-scrollbar-thumb {
+        background: rgba(239, 68, 68, 0.6);
+        border-radius: 10px;
+    }
+
+    #chat_container::-webkit-scrollbar-thumb:hover {
+        background: rgba(239, 68, 68, 0.8);
+    }
+
+    /* Responsive improvements */
+    @media (max-width: 640px) {
+        #chat_window {
+            height: 70vh;
+            max-width: 95vw;
+        }
+        
+        #chat_header {
+            min-height: 50px;
+            padding: 0.75rem;
+        }
+        
+        #groupchat-members {
+            gap: 0.25rem;
+            padding: 0.5rem 0.25rem;
+        }
+        
+        #groupchat-members img {
+            width: 56px !important;
+            height: 56px !important;
+        }
+        
+        #groupchat-members span {
+            font-size: 10px;
+            max-width: 40px;
+        }
+        
+        .message-received img {
+            width: 56px !important;
+            height: 56px !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        #chat_window {
+            height: 65vh;
+            border-radius: 1rem;
+        }
+        
+        #chat_messages {
+            padding: 0.5rem;
+        }
+        
+        .message-sent .max-w-xs,
+        .message-received .max-w-xs {
+            max-width: calc(100vw - 5rem);
+        }
+    }
+</style>
+
+{% endblock %}
+
+
+{% block javascript %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script>
+    // Background animation with anime.js
+    function createBackgroundAnimation() {
+        const bgElement = document.getElementById('bg-animation');
+        if (!bgElement) return;
+        
+        // Clear any existing elements
+        bgElement.innerHTML = '';
+        
+        // Create floating elements
+        for (let i = 0; i < 15; i++) {
+            const el = document.createElement('div');
+            el.style.position = 'absolute';
+            el.style.width = Math.random() * 6 + 2 + 'px';
+            el.style.height = el.style.width;
+            el.style.backgroundColor = i % 2 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(75, 85, 99, 0.1)';
+            el.style.borderRadius = '50%';
+            el.style.left = Math.random() * 100 + '%';
+            el.style.top = Math.random() * 100 + '%';
+            bgElement.appendChild(el);
+            
+            anime({
+                targets: el,
+                translateY: [0, -50 - Math.random() * 100],
+                translateX: [-20 + Math.random() * 40, -20 + Math.random() * 40],
+                scale: [1, 1.5, 0.5],
+                opacity: [0.3, 0.8, 0],
+                duration: 8000 + Math.random() * 4000,
+                loop: true,
+                easing: 'easeInOutSine',
+                delay: Math.random() * 2000
+            });
+        }
+    }
+
+    // Initialize background animation when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        createBackgroundAnimation();
+        initializeWebSocket();
+        setupEventListeners();
+    });
+
+    // WebSocket connection
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const chatroomName = "{{ chatroom_name }}";
+    let chatSocket;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    
+    function initializeWebSocket() {
+        try {
+            chatSocket = new WebSocket(
+                wsScheme + '://' + window.location.host + '/ws/chatroom/' + chatroomName + '/'
+            );
+
+            // Modify the onopen handler to handle delayed database operations
+            chatSocket.onopen = function(e) {
+                console.log('WebSocket connection established');
+                reconnectAttempts = 0;
+                
+                // Update UI to show connection is active
+                updateConnectionStatus(true);
+                
+                // Don't send seen event immediately - wait a bit for DB operations
+                setTimeout(sendSeenEvent, 1000);
+            };
+
+
+            chatSocket.onmessage = function(e) {
+                let data;
+                try {
+                    data = JSON.parse(e.data);
+                } catch {
+                    // Handle non-JSON responses (like online count updates)
+                    const onlineCountElem = document.getElementById('online-count');
+                    if (onlineCountElem) {
+                        onlineCountElem.outerHTML = e.data;
+                    }
+                    return;
+                }
+
+                // Handle online count updates
+                if (data.type === "online_count") {
+                    const onlineCountElem = document.getElementById('online-count');
+                    if (onlineCountElem) {
+                        onlineCountElem.textContent = data.online_count;
+                    }
+                    return;
+                }
+
+                // Handle seen status updates
+                if (data.update_seen && data.message_id) {
+                    const msgElem = document.querySelector(`[data-message-id='${data.message_id}']`);
+                    if (msgElem) {
+                        let tickHtml = '';
+                        if (data.seen_by && data.seen_by.length > 0) {
+                            tickHtml = `<svg class="inline ml-1 w-4 h-4" viewBox="0 0 20 20"><path fill="#22C55E" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/><path fill="#22C55E" d="M11.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/></svg>`;
+                        } else if (data.delivered_to && data.delivered_to.length > 0) {
+                            tickHtml = `<svg class="inline ml-1 w-4 h-4" viewBox="0 0 20 20"><path fill="#6B7280" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/><path fill="#6B7280" d="M11.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/></svg>`;
+                        } else {
+                            tickHtml = `<svg class="inline ml-1 w-4 h-4" viewBox="0 0 20 20"><path fill="#6B7280" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/></svg>`;
+                        }
+                        const tickSpan = msgElem.querySelector('.tick-icon');
+                        if (tickSpan) {
+                            tickSpan.innerHTML = tickHtml;
+                        }
+                    }
+                    return;
+                }
+
+                // Skip if this is not a message type or missing required data
+                if (data.type !== "message" || !data.message_id || !data.username) {
+                    console.log('Ignoring non-message data:', data);
+                    return;
+                }
+
+                // Skip messages with undefined or empty content
+                if (typeof data.message === 'undefined' || data.message === null || data.message === '') {
+                    console.log('Skipping empty message:', data);
+                    return;
+                }
+
+                const chatMessages = document.getElementById('chat_messages');
+                if (!chatMessages) return;
+                
+                let msgHtml = '';
+                const currentUser = "{{ request.user.username }}"; // Get current user from template
+                
+                if (data.username === currentUser) {
+                    // Sent message
+                    let tickHtml = '';
+                    if (data.seen_by && data.seen_by.length > 0) {
+                        tickHtml = `<svg class="inline ml-1 w-4 h-4" viewBox="0 0 20 20"><path fill="#22C55E" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/><path fill="#22C55E" d="M11.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/></svg>`;
+                    } else if (data.delivered_to && data.delivered_to.length > 0) {
+                        tickHtml = `<svg class="inline ml-1 w-4 h-4" viewBox="0 0 20 20"><path fill="#6B7280" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/><path fill="#6B7280" d="M11.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/></svg>`;
+                    } else {
+                        tickHtml = `<svg class="inline ml-1 w-4 h-4" viewBox="0 0 20 20"><path fill="#6B7280" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/></svg>`;
+                    }
+                    
+                    msgHtml = `
+                        <li class="flex justify-end message-sent" data-message-id="${data.message_id}">
+                            <div class="max-w-xs lg:max-w-md px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl rounded-br-md shadow-lg relative">
+                                <div class="flex items-end gap-2">
+                                    <span class="break-words">${escapeHtml(data.message)}</span>
+                                    <span class="tick-icon flex-shrink-0">${tickHtml}</span>
+                                </div>
+                                <div class="absolute -right-2 bottom-0 w-0 h-0 border-l-8 border-l-red-700 border-t-8 border-t-transparent"></div>
+                            </div>
+                        </li>
+                    `;
+                } else {
+                    // Received message - use actual user avatar
+                    msgHtml = `
+                        <li class="flex justify-start message-received">
+                            <div class="flex items-start gap-3 max-w-xs lg:max-w-md">
+                                <div class="flex-shrink-0">
+                                    <img class="w-8 h-8 rounded-full object-cover border-2 border-gray-600 shadow-md" 
+                                        src="/static/images/avatar.svg" 
+                                        alt="${escapeHtml(data.username)}">
+                                </div>
+                                <div class="relative">
+                                    <div class="px-4 py-3 bg-gray-800 text-white rounded-2xl rounded-bl-md shadow-lg">
+                                        <span class="break-words">${escapeHtml(data.message)}</span>
+                                    </div>
+                                    <div class="absolute -left-2 bottom-0 w-0 h-0 border-r-8 border-r-gray-800 border-t-8 border-t-transparent"></div>
+                                    <div class="text-xs text-gray-400 mt-1 px-2">
+                                        <span class="font-medium">${escapeHtml(data.username)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    `;
+                }
+                
+                chatMessages.insertAdjacentHTML('beforeend', msgHtml);
+                scrollToBottom();
+                
+                // Animate the new message
+                const lastMessage = chatMessages.lastElementChild;
+                if (lastMessage) {
+                    anime({
+                        targets: lastMessage,
+                        scale: [0.8, 1],
+                        opacity: [0, 1],
+                        duration: 300,
+                        easing: 'easeOutBack'
+                    });
+                }
+            };
+
+            // Add this helper function to prevent XSS and handle HTML escaping
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            chatSocket.onerror = function(e) {
+                console.error('WebSocket error:', e);
+                updateConnectionStatus(false);
+            };
+
+            chatSocket.onclose = function(e) {
+                console.log('WebSocket connection closed');
+                updateConnectionStatus(false);
+                
+                // Attempt to reconnect with exponential backoff
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    const delay = Math.pow(2, reconnectAttempts) * 1000; // Exponential backoff
+                    console.log(`Attempting to reconnect in ${delay/1000} seconds... (Attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+                    
+                    setTimeout(function() {
+                        initializeWebSocket();
+                    }, delay);
+                } else {
+                    console.error('Max reconnection attempts reached. Please refresh the page.');
+                    showConnectionError();
+                }
+            };
+        } catch (error) {
+            console.error('Error initializing WebSocket:', error);
+            updateConnectionStatus(false);
+        }
+    }
+
+    function setupEventListeners() {
+        // Focus input and handle enter key
+        const chatInput = document.getElementById('chat_input');
+        if (chatInput) {
+            chatInput.focus();
+            
+            chatInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        }
+
+        // Handle form submit button
+        const chatForm = document.getElementById('chat_message_form');
+        if (chatForm) {
+            chatForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                sendMessage();
+            });
+        }
+    }
+
+    function sendMessage() {
+        const chatInput = document.getElementById('chat_input');
+        if (!chatInput) return;
+        
+        const message = chatInput.value.trim();
+        if (message !== "" && chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({
+                'body': message
+            }));
+            chatInput.value = "";
+        } else if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
+            alert('Connection lost. Please wait while we try to reconnect.');
+        }
+    }
+
+    function scrollToBottom(time = 0) {
+        setTimeout(function() {
+            const container = document.getElementById('chat_container');
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }, time);
+    }
+    
+    // Send seen event
+    function sendSeenEvent() {
+        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({ type: "seen" }));
+        }
+    }
+    
+    // Update connection status UI
+    function updateConnectionStatus(isConnected) {
+        const statusElement = document.getElementById('connection-status');
+        if (!statusElement) return;
+        
+        if (isConnected) {
+            statusElement.innerHTML = '<span class="text-green-500">●</span> Connected';
+            statusElement.className = 'text-sm text-green-400';
+        } else {
+            statusElement.innerHTML = '<span class="text-red-500">●</span> Connecting...';
+            statusElement.className = 'text-sm text-red-400';
+        }
+    }
+    
+    function showConnectionError() {
+        const statusElement = document.getElementById('connection-status');
+        if (statusElement) {
+            statusElement.innerHTML = '<span class="text-red-500">●</span> Connection failed. <a href="#" onclick="location.reload()" class="underline">Refresh page</a>';
+            statusElement.className = 'text-sm text-red-400';
+        }
+    }
+    
+    // Send seen event when window is focused
+    window.addEventListener('focus', sendSeenEvent);
+</script>
+{% endblock %}

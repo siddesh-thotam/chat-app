@@ -1,0 +1,65 @@
+{% if message.author == user %}
+<!-- Sent Message (Right-aligned) -->
+<li class="flex justify-end message-sent" data-message-id="{{ message.id }}">
+    <div class="max-w-xs lg:max-w-md px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl rounded-br-md shadow-lg hover:shadow-red-500/25 transition-all duration-300 relative group">
+        <div class="flex items-end gap-2">
+            <div class="break-words">
+                {% include 'a_rtchat/partials/message_content.html' %}
+            </div>
+            <span class="tick-icon flex-shrink-0">
+                <!-- Tick icons will be updated by WebSocket -->
+                <svg class="inline w-4 h-4" viewBox="0 0 20 20">
+                    <path fill="#94A3B8" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/>
+                </svg>
+            </span>
+        </div>
+        <!-- Message tail -->
+        <div class="absolute -right-2 bottom-0 w-0 h-0 border-l-8 border-l-red-700 border-t-8 border-t-transparent"></div>
+        
+        <!-- Hover timestamp -->
+        <div class="absolute -top-6 right-0 bg-gray-800 text-xs text-gray-300 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+            {{ message.created|date:"H:i" }}
+        </div>
+    </div>
+</li>
+{% else %}
+<!-- Received Message (Left-aligned) -->
+<li class="message-received">
+    <div class="flex justify-start">
+        <div class="flex items-start gap-3 max-w-xs lg:max-w-md group">
+            <!-- Avatar -->
+            <div class="flex-shrink-0 relative">
+                <a href="{% url 'profile' message.author.username %}" class="block">
+                    <img class="w-10 h-10 rounded-full object-cover border-2 border-gray-600 shadow-md hover:border-red-500 transition-colors duration-300" 
+                         src="{{ message.author.profile.avatar }}" 
+                         alt="{{ message.author.profile.name }}">
+                </a>
+                <!-- Online indicator -->
+                <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900 shadow-sm"></div>
+            </div>
+            
+            <!-- Message bubble -->
+            <div class="relative">
+                <div class="px-4 py-3 bg-gray-800 text-white rounded-2xl rounded-bl-md shadow-lg hover:shadow-gray-700/50 transition-all duration-300 border border-gray-700/50">
+                    <div class="break-words">
+                        {% include 'a_rtchat/partials/message_content.html' %}
+                    </div>
+                </div>
+                <!-- Message tail -->
+                <div class="absolute -left-2 bottom-0 w-0 h-0 border-r-8 border-r-gray-800 border-t-8 border-t-transparent"></div>
+                
+                <!-- Author info -->
+                <div class="text-xs text-gray-400 mt-1 px-2 flex items-center gap-2">
+                    <span class="font-medium text-white hover:text-red-400 transition-colors duration-300">
+                        {{ message.author.profile.name }}
+                    </span>
+                    <span class="text-gray-500">@{{ message.author.username }}</span>
+                    <span class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        {{ message.created|date:"H:i" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</li>
+{% endif %}

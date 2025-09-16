@@ -1,0 +1,11 @@
+{% extends 'layouts/box.html' %}
+
+{% block content %}
+<h1>Leave Group: {{ chat_group.groupchat_name|default:chat_group.group_name }}</h1>
+<p>Are you sure you want to leave this group?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded">Leave Group</button>
+    <a href="{% url 'chatroom' chat_group.group_name %}" class="ml-4 text-gray-500">Cancel</a>
+</form>
+{% endblock %}

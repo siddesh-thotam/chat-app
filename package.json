@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "htmx-ext-ws": "^2.0.3"
+  }
+}
