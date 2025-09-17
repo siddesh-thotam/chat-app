@@ -392,7 +392,6 @@
                 setTimeout(sendSeenEvent, 1000);
             };
 
-
             chatSocket.onmessage = function(e) {
                 let data;
                 try {
@@ -412,6 +411,12 @@
                     if (onlineCountElem) {
                         onlineCountElem.textContent = data.online_count;
                     }
+                    return;
+                }
+
+                // Handle file messages
+                if (data.type === "file") {
+                    handleFileMessage(data);
                     return;
                 }
 
@@ -515,13 +520,6 @@
                 }
             };
 
-            // Add this helper function to prevent XSS and handle HTML escaping
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-
             chatSocket.onerror = function(e) {
                 console.error('WebSocket error:', e);
                 updateConnectionStatus(false);
@@ -549,6 +547,138 @@
             console.error('Error initializing WebSocket:', error);
             updateConnectionStatus(false);
         }
+    }
+
+    // Add this function to handle file messages
+    function handleFileMessage(data) {
+        const chatMessages = document.getElementById('chat_messages');
+        if (!chatMessages) return;
+        
+        const currentUser = "{{ request.user.username }}";
+        let msgHtml = '';
+        
+        if (data.username === currentUser) {
+            // Sent file message
+            let tickHtml = '';
+            if (data.seen_by && data.seen_by.length > 0) {
+                tickHtml = `<svg class="inline ml-1 w-4 h-4" viewBox="0 0 20 20"><path fill="#22C55E" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/><path fill="#22C55E" d="M11.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/></svg>`;
+            } else if (data.delivered_to && data.delivered_to.length > 0) {
+                tickHtml = `<svg class="inline ml-1 w-4 h-4" viewBox="0 0 20 20"><path fill="#6B7280" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/><path fill="#6B7280" d="M11.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/></svg>`;
+            } else {
+                tickHtml = `<svg class="inline ml-1 w-4 h-4" viewBox="0 0 20 20"><path fill="#6B7280" d="M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z"/></svg>`;
+            }
+            
+            msgHtml = `
+                <li class="flex justify-end message-sent" data-message-id="${data.message_id}">
+                    <div class="max-w-xs lg:max-w-md px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl rounded-br-md shadow-lg relative">
+                        <div class="flex items-end gap-2">
+                            ${renderFileContent(data)}
+                            <span class="tick-icon flex-shrink-0">${tickHtml}</span>
+                        </div>
+                        <div class="absolute -right-2 bottom-0 w-0 h-0 border-l-8 border-l-red-700 border-t-8 border-t-transparent"></div>
+                    </div>
+                </li>
+            `;
+        } else {
+            // Received file message
+            msgHtml = `
+                <li class="flex justify-start message-received">
+                    <div class="flex items-start gap-3 max-w-xs lg:max-w-md">
+                        <div class="flex-shrink-0">
+                            <img class="w-8 h-8 rounded-full object-cover border-2 border-gray-600 shadow-md" 
+                                src="/static/images/avatar.svg" 
+                                alt="${escapeHtml(data.username)}">
+                        </div>
+                        <div class="relative">
+                            <div class="px-4 py-3 bg-gray-800 text-white rounded-2xl rounded-bl-md shadow-lg">
+                                ${renderFileContent(data)}
+                            </div>
+                            <div class="absolute -left-2 bottom-0 w-0 h-0 border-r-8 border-r-gray-800 border-t-8 border-t-transparent"></div>
+                            <div class="text-xs text-gray-400 mt-1 px-2">
+                                <span class="font-medium">${escapeHtml(data.username)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            `;
+        }
+        
+        chatMessages.insertAdjacentHTML('beforeend', msgHtml);
+        scrollToBottom();
+        
+        // Animate the new message
+        const lastMessage = chatMessages.lastElementChild;
+        if (lastMessage) {
+            anime({
+                targets: lastMessage,
+                scale: [0.8, 1],
+                opacity: [0, 1],
+                duration: 300,
+                easing: 'easeOutBack'
+            });
+        }
+    }
+
+    // Helper function to render file content based on type
+    function renderFileContent(data) {
+        if (data.is_image || data.is_gif) {
+            return `
+                <div class="relative group">
+                    <img class="max-w-72 min-w-8 rounded-xl shadow-lg cursor-pointer transition-transform duration-300 hover:scale-105" 
+                         src="${data.file_url}"
+                         alt="${data.filename}"
+                         onclick="openImageModal(this.src)">
+                    ${data.is_gif ? `
+                        <div class="absolute top-2 right-2 bg-black/70 rounded-full px-2 py-1 text-xs text-white">
+                            GIF
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } else if (data.is_pdf) {
+            return `
+                <div class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg border border-gray-600/30 hover:bg-gray-600/50 transition-colors duration-300 group">
+                    <div class="p-2 bg-red-600 rounded-lg shadow-md group-hover:bg-red-700 transition-colors duration-300">
+                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <a class="text-white hover:text-red-400 transition-colors duration-300 font-medium break-all" 
+                           href="${data.file_url}"
+                           download="${data.filename}">
+                            ${data.filename}
+                        </a>
+                        <div class="text-xs text-gray-400 mt-1">PDF Document - Click to download</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg border border-gray-600/30 hover:bg-gray-600/50 transition-colors duration-300 group">
+                    <div class="p-2 bg-gray-600 rounded-lg shadow-md group-hover:bg-gray-700 transition-colors duration-300">
+                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <a class="text-white hover:text-red-400 transition-colors duration-300 font-medium break-all" 
+                           href="${data.file_url}"
+                           download="${data.filename}">
+                            ${data.filename}
+                        </a>
+                        <div class="text-xs text-gray-400 mt-1">Click to download</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Add this helper function to prevent XSS and handle HTML escaping
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     function setupEventListeners() {

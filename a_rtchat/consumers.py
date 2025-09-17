@@ -155,9 +155,16 @@ class ChatroomConsumer(AsyncWebsocketConsumer):
             # Add body only if it exists and is not empty
             if message.body and message.body.strip():
                 message_data["message"] = message.body.strip()
+                message_data["type"] = "text"
             elif message.file:
-                # For file messages, send a descriptive text
-                message_data["message"] = f"Shared a file: {message.filename}"
+                # For file messages, send file information
+                message_data["file_url"] = message.file.url
+                message_data["filename"] = message.filename
+                message_data["file_type"] = message.file_type
+                message_data["is_image"] = message.is_image
+                message_data["is_gif"] = message.is_gif
+                message_data["is_pdf"] = message.is_pdf
+                message_data["type"] = "file"
             else:
                 return None
                 
@@ -165,6 +172,7 @@ class ChatroomConsumer(AsyncWebsocketConsumer):
             
         except GroupMessage.DoesNotExist:
             return None
+    
 
     async def chat_message(self, event):
         """Send message to client"""
