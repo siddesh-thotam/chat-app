@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 import shortuuid
 from django.contrib.auth.models import User
 import os
+import shortuuid
 from django.core.exceptions import ValidationError
 from cloudinary.models import CloudinaryField
 
@@ -38,8 +39,7 @@ class GroupMessage(models.Model):
     @property
     def filename(self):
         if self.file:
-            return os.path.basename(self.file.name)
-        else:
+            return self.file.public_id.split('/')[-1]  
             return None
     
     @property
@@ -60,7 +60,8 @@ class GroupMessage(models.Model):
             raise ValidationError("Message must have either body text or a file.")
     
     def save(self, *args, **kwargs):
-        self.clean()  # Run validation before saving
+        if not self.body and not self.file:
+            return
         super().save(*args, **kwargs)
 
 
@@ -70,7 +71,18 @@ class GroupMessage(models.Model):
 
     @property
     def is_image(self):
-        fname = self.filename
-        if fname and fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp')):
-            return True
-        return False    
+        if not self.file:
+            return False
+            
+        public_id = self.file.public_id
+        if '.' in public_id:
+            extension = public_id.split('.')[-1].lower()
+        else:
+            url = str(self.file)
+            if '.' in url:
+                extension = url.split('.')[-1].lower().split('?')[0]  
+            else:
+                return False
+                
+        image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp']
+        return extension in image_extensions    
