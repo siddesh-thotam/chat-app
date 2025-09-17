@@ -5,7 +5,7 @@
     {% if message.is_image %}
         <div class="relative group">
             <img class="max-w-72 min-w-8 rounded-xl shadow-lg cursor-pointer transition-transform duration-300 hover:scale-105" 
-                 src="{{ message.file.url }}" 
+                 src="{{ message.file_url }}"  
                  alt="Shared image"
                  onclick="openImageModal(this.src)">
             <div class="absolute inset-0 bg-black/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -23,11 +23,13 @@
                 </svg>
             </div>
             <div class="flex-1 min-w-0">
-                <a class="text-white hover:text-red-400 transition-colors duration-300 font-medium break-all" 
-                   href="{{ message.file.url }}" 
-                   download>
-                    {{ message.filename }}
-                </a>
+                
+                 <a class="text-white hover:text-red-400 transition-colors duration-300 font-medium break-all" 
+               href="{{ message.file_url }}"  
+               download>
+                {{ message.filename }}
+            </a>
+            
                 <div class="text-xs text-gray-400 mt-1">Click to download</div>
             </div>
         </div>
