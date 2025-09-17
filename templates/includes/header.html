@@ -37,6 +37,14 @@
                         </button>
                         <div x-show="groupDropdownOpen" x-cloak class="absolute left-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-xl shadow-lg z-50 py-2">
                             <ul class="flex flex-col gap-1">
+                                
+                                <li>
+                                    <a href="{% url 'chatroom' 'public-chat' %}" 
+                                    class="block px-4 py-2 rounded-lg text-gray-300 hover:bg-red-600/80 hover:text-white transition-all duration-200 font-medium whitespace-nowrap">
+                                        🌐 Public Chat
+                                    </a>
+                                </li>
+
                                 {% for group in user_groupchats %}
                                     <li>
                                         <a href="{% url 'chatroom' group.group_name %}" class="block px-4 py-2 rounded-lg text-gray-300 hover:bg-red-600/80 hover:text-white transition-all duration-200 font-medium whitespace-nowrap">
