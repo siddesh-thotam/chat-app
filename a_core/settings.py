@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    "allauth.socialaccount.providers.github",
 
     # My apps
     'a_home',
@@ -251,6 +252,14 @@ SOCIALACCOUNT_PROVIDERS = {
             'client_id': env('GOOGLE_CLIENT_ID'),
             'secret': env('GOOGLE_CLIENT_SECRET'),
             'key': ''
+        }
+    },
+    "github": {
+        "SCOPE": ["user", "user:email"],
+        "APP": {
+            "client_id": env('GITHUB_CLIENT_ID'),
+            "secret": env('GITHUB_CLIENT_SECRET'),
+            "key": ""
         }
     }
 }
