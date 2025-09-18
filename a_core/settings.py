@@ -255,3 +255,11 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+# Tell Django it's behind a proxy (Render) and to trust HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+
+if os.environ.get("ENVIRONMENT") == "production":
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
