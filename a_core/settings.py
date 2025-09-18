@@ -9,7 +9,7 @@ env = Env()
 env.read_env(os.path.join(BASE_DIR, ".env"))
 
 ENVIRONMENT = env('ENVIRONMENT', default="production")
-# ENVIRONMENT = "development"
+ENVIRONMENT = "development"
 
 
 
@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'allauth',
     'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
 
     # My apps
     'a_home',
@@ -63,7 +65,17 @@ INSTALLED_APPS = [
     'cloudinary',
 ]
 
-SITE_ID = 1
+import os
+
+if os.environ.get("ENVIRONMENT") == "production":
+    SITE_ID = 2   # chat-app-mvol.onrender.com
+else:
+    SITE_ID = 1   # 127.0.0.1:8000
+
+
+LOGIN_REDIRECT_URL = '/profile/settings'
+
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -136,6 +148,9 @@ if ENVIRONMENT == 'development':
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,  # wait up to 20 seconds if the DB is locked
+            }
         }
     }
 else:
@@ -202,7 +217,7 @@ else:
     
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGIN_REDIRECT_URL = '/'
+
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST='smtp.gmail.com'
@@ -221,3 +236,22 @@ ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 import logging
 logger = logging.getLogger('channels_redis')
 logger.setLevel(logging.DEBUG)
+
+
+ACCOUNT_LOGIN_METHODS = {"username", "email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory' 
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+        'OAUTH_PKCE_ENABLED': True,
+        'APP': {
+            'client_id': env('GOOGLE_CLIENT_ID'),
+            'secret': env('GOOGLE_CLIENT_SECRET'),
+            'key': ''
+        }
+    }
+}
+
