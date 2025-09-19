@@ -66,13 +66,7 @@ INSTALLED_APPS = [
     'cloudinary',
 ]
 
-import os
-
-if os.environ.get("ENVIRONMENT") == "production":
-    SITE_ID = 2   # chat-app-mvol.onrender.com
-else:
-    SITE_ID = 1   # 127.0.0.1:8000
-
+SITE_ID = 1
 
 LOGIN_REDIRECT_URL = '/profile/settings'
 
