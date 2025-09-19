@@ -9,7 +9,7 @@ env = Env()
 env.read_env(os.path.join(BASE_DIR, ".env"))
 
 ENVIRONMENT = env('ENVIRONMENT', default="production")
-ENVIRONMENT = "development"
+# ENVIRONMENT = "development"
 
 
 
