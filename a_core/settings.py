@@ -8,24 +8,37 @@ env = Env()
 env.read_env(os.path.join(BASE_DIR, ".env"))
 
 ENVIRONMENT = env('ENVIRONMENT', default="production")
+# ENVIRONMENT = "development"
+
+
+
 
 # Project title displayed in the header
 PROJECT_TITLE = "Chat App"
 
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
 
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+if ENVIRONMENT == 'development':
+    DEBUG = False
+else:
+    DEBUG = False
+
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chat-app-mvol.onrender.com']
 
-CSRF_TRUSTED_ORIGINS = ['https://chat-app-mvol.onrender.com']
+CSRF_TRUSTED_ORIGINS = [ 'https://chat-app-mvol.onrender.com' ]
+
 
 # Application definition
+
 INSTALLED_APPS = [
     'daphne',
     'channels',
+    'channels_redis',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -53,7 +66,10 @@ INSTALLED_APPS = [
 ]
 
 SITE_ID = 1
+
 LOGIN_REDIRECT_URL = '/profile/settings'
+
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -68,12 +84,23 @@ MIDDLEWARE = [
     'django_htmx.middleware.HtmxMiddleware',
 ]
 
+# -------------------------------
+
+if DEBUG:
+    MIDDLEWARE += ['django_browser_reload.middleware.BrowserReloadMiddleware']
+
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
 ROOT_URLCONF = 'a_core.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [ BASE_DIR / 'templates' ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -88,44 +115,49 @@ TEMPLATES = [
     },
 ]
 
+# WSGI_APPLICATION = 'a_core.wsgi.application'
+
 ASGI_APPLICATION = 'a_core.asgi.application'
 
-# Use InMemoryChannelLayer for now
-CHANNEL_LAYERS = {
-    'default': {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+# In settings.py
+if ENVIRONMENT == 'development':
+    CHANNEL_LAYERS = {
+        'default': {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
     }
-}
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [env('REDIS_URL')],  
+            },
+        },
+    }
 
-# Database configuration with enhanced SSL settings
+# Database
+# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+
 if ENVIRONMENT == 'development':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
             'OPTIONS': {
-                'timeout': 20,
+                'timeout': 20,  # wait up to 20 seconds if the DB is locked
             }
         }
     }
 else:
+    import dj_database_url
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'postgressql_7wca',
-            'USER': 'postgressql_7wca_user',
-            'PASSWORD': '82iepXOYLxREb4SHu2HTrUyx2tIbNrFq',
-            'HOST': 'dpg-d3375q7diees739a22v0-a.oregon-postgres.render.com',
-            'PORT': '5432',
-            'OPTIONS': {
-                'sslmode': 'require',
-                'sslrootcert': '/etc/ssl/certs/ca-certificates.crt',
-            },
-            'CONN_MAX_AGE': 600,
-        }
+        'default': dj_database_url.parse(env('DATABASE_URL'))
     }
 
 # Password validation
+# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -141,18 +173,28 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
 # Internationalization
+# https://docs.djangoproject.com/en/5.0/topics/i18n/
+
 LANGUAGE_CODE = 'en-us'
+
 TIME_ZONE = 'UTC'
+
 USE_I18N = True
+
 USE_TZ = True
 
-# Static files
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.0/howto/static-files/
+
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
-# Media files
+
+# settings.py
 if ENVIRONMENT == 'development':
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -166,24 +208,35 @@ else:
         'EXCLUDE_DELETE_ORPHANED_MEDIA_PATHS': (),
         'STATICFILES_MANIFEST_ROOT': None
     }
-    MEDIA_URL = '/media/'
+    MEDIA_URL = '/media/'  
 
+    
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = env('EMAIL_ADDRESS')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = f"chatapp {env('EMAIL_ADDRESS')}"
-ACCOUNT_EMAIL_SUBJECT_PREFIX = ''
 
-# Allauth configuration
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST='smtp.gmail.com'
+EMAIL_HOST_USER=env('EMAIL_ADDRESS')
+EMAIL_HOST_PASSWORD=env('EMAIL_HOST_PASSWORD')
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+DEFAULT_FROM_EMAIL=f"chatapp(env('EMAIL_HOST_PASSWORD'))"
+ACCOUNT_EMAIL_SUBJECT_PREFIX=''
+
+ACCOUNT_LOGIN_METHODS = {'email', 'username'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+
+
+# Add this to your settings.py to debug Redis connection
+import logging
+logger = logging.getLogger('channels_redis')
+logger.setLevel(logging.DEBUG)
+
+
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory' 
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -206,8 +259,9 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-# Security settings for production
+# Tell Django it's behind a proxy (Render) and to trust HTTPS
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 if os.environ.get("ENVIRONMENT") == "production":
     SESSION_COOKIE_SECURE = True
