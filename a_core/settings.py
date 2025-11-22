@@ -8,7 +8,6 @@ env = Env()
 env.read_env(os.path.join(BASE_DIR, ".env"))
 
 ENVIRONMENT = env('ENVIRONMENT', default="production")
-# ENVIRONMENT = "development"
 
 # Project title displayed in the header
 PROJECT_TITLE = "Chat App"
@@ -17,20 +16,16 @@ PROJECT_TITLE = "Chat App"
 SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-if ENVIRONMENT == 'development':
-    DEBUG = False
-else:
-    DEBUG = False
+DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chat-app-mvol.onrender.com']
 
-CSRF_TRUSTED_ORIGINS = [ 'https://chat-app-mvol.onrender.com' ]
+CSRF_TRUSTED_ORIGINS = ['https://chat-app-mvol.onrender.com']
 
 # Application definition
 INSTALLED_APPS = [
     'daphne',
     'channels',
-    # 'channels_redis',  # Temporarily commented out
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -58,7 +53,6 @@ INSTALLED_APPS = [
 ]
 
 SITE_ID = 1
-
 LOGIN_REDIRECT_URL = '/profile/settings'
 
 MIDDLEWARE = [
@@ -74,21 +68,12 @@ MIDDLEWARE = [
     'django_htmx.middleware.HtmxMiddleware',
 ]
 
-# -------------------------------
-if DEBUG:
-    MIDDLEWARE += ['django_browser_reload.middleware.BrowserReloadMiddleware']
-
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-]
-
 ROOT_URLCONF = 'a_core.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [ BASE_DIR / 'templates' ],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -103,17 +88,16 @@ TEMPLATES = [
     },
 ]
 
-# WSGI_APPLICATION = 'a_core.wsgi.application'
 ASGI_APPLICATION = 'a_core.asgi.application'
 
-# Temporary fix - use InMemoryChannelLayer for now
+# Use InMemoryChannelLayer for now
 CHANNEL_LAYERS = {
     'default': {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
     }
 }
 
-# Database
+# Database configuration with enhanced SSL settings
 if ENVIRONMENT == 'development':
     DATABASES = {
         'default': {
@@ -135,7 +119,9 @@ else:
             'PORT': '5432',
             'OPTIONS': {
                 'sslmode': 'require',
+                'sslrootcert': '/etc/ssl/certs/ca-certificates.crt',
             },
+            'CONN_MAX_AGE': 600,
         }
     }
 
@@ -191,7 +177,7 @@ EMAIL_HOST_USER = env('EMAIL_ADDRESS')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = f"chatapp {env('EMAIL_ADDRESS')}"  # Fixed this line
+DEFAULT_FROM_EMAIL = f"chatapp {env('EMAIL_ADDRESS')}"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ''
 
 # Allauth configuration
