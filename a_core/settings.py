@@ -151,18 +151,18 @@ if ENVIRONMENT == 'development':
         }
     }
 else:
-    import dj_database_url
     DATABASES = {
-        'default': dj_database_url.config(
-            default=env('DATABASE_URL'),
-            conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=True
-        )
-    }
-    # Force SSL for PostgreSQL
-    DATABASES['default']['OPTIONS'] = {
-        'sslmode': 'require',
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'postgressql_7wca',
+            'USER': 'postgressql_7wca_user',
+            'PASSWORD': '82iepXOYLxREb4SHu2HTrUyx2tIbNrFq',
+            'HOST': 'dpg-d3375q7diees739a22v0-a.oregon-postgres.render.com',
+            'PORT': '5432',
+            'OPTIONS': {
+                'sslmode': 'require',
+            },
+        }
     }
 
 # Password validation
