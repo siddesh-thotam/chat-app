@@ -153,7 +153,16 @@ if ENVIRONMENT == 'development':
 else:
     import dj_database_url
     DATABASES = {
-        'default': dj_database_url.parse(env('DATABASE_URL'))
+        'default': dj_database_url.config(
+            default=env('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True
+        )
+    }
+    # Force SSL for PostgreSQL
+    DATABASES['default']['OPTIONS'] = {
+        'sslmode': 'require',
     }
 
 # Password validation
