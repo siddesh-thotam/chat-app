@@ -124,13 +124,17 @@ else:
     REDIS_URL = env("REDIS_URL")
 
     # Force TLS for Upstash (rediss://)
-    CHANNEL_LAYERS = {
+import os
+
+CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env("REDIS_URL")],
+            "hosts": [os.environ.get("REDIS_URL")],
+            "capacity": 1000,
+            "group_expiry": 3600,
         },
-    }
+    },
 }
 
 
