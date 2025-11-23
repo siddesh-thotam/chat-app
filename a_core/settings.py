@@ -8,69 +8,67 @@ env = Env()
 env.read_env(os.path.join(BASE_DIR, ".env"))
 
 ENVIRONMENT = env('ENVIRONMENT', default="production")
-# ENVIRONMENT = "development"
 
-
-
-
-# Project title displayed in the header
+# -------------------------
+# Basic Settings
+# -------------------------
 PROJECT_TITLE = "Chat App"
-
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
 
+DEBUG = ENVIRONMENT == 'development'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-if ENVIRONMENT == 'development':
-    DEBUG = False
-else:
-    DEBUG = False
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'chat-app-mvol.onrender.com'
+]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://chat-app-mvol.onrender.com'
+]
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chat-app-mvol.onrender.com']
-
-CSRF_TRUSTED_ORIGINS = [ 'https://chat-app-mvol.onrender.com' ]
-
-
-# Application definition
-
+# -------------------------
+# Installed Apps
+# -------------------------
 INSTALLED_APPS = [
     'daphne',
     'channels',
     'channels_redis',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'django_cleanup.apps.CleanupConfig',
     'django_htmx',
     'django.contrib.sites',
+
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
-    "allauth.socialaccount.providers.github",
+    'allauth.socialaccount.providers.github',
 
-    # My apps
+    # Your apps
     'a_home',
     'a_users',
-    'a_rtchat', 
-    
-    # Third party
+    'a_rtchat',
+
+    # Third-party
     'django_browser_reload',
     'cloudinary_storage',
     'cloudinary',
 ]
 
 SITE_ID = 1
-
 LOGIN_REDIRECT_URL = '/profile/settings'
 
-
-
+# -------------------------
+# Middleware
+# -------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -84,23 +82,18 @@ MIDDLEWARE = [
     'django_htmx.middleware.HtmxMiddleware',
 ]
 
-# -------------------------------
-
 if DEBUG:
     MIDDLEWARE += ['django_browser_reload.middleware.BrowserReloadMiddleware']
 
-
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-]
-
+# -------------------------
+# Templates
+# -------------------------
 ROOT_URLCONF = 'a_core.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [ BASE_DIR / 'templates' ],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -115,29 +108,37 @@ TEMPLATES = [
     },
 ]
 
-# WSGI_APPLICATION = 'a_core.wsgi.application'
-
 ASGI_APPLICATION = 'a_core.asgi.application'
 
-# In settings.py
-if ENVIRONMENT == 'development':
+# -------------------------
+# CHANNEL LAYERS (Upstash TLS FIXED)
+# -------------------------
+
+if ENVIRONMENT == "development":
     CHANNEL_LAYERS = {
-        'default': {
+        "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         }
     }
 else:
+    REDIS_URL = env("REDIS_URL")
+
+    # Force TLS for Upstash (rediss://)
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [env('REDIS_URL')],  
+                "hosts": [{
+                    "address": REDIS_URL,
+                    "ssl": True,          # IMPORTANT FIX
+                }],
             },
-        },
+        }
     }
 
+# -------------------------
 # Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+# -------------------------
 
 if ENVIRONMENT == 'development':
     DATABASES = {
@@ -145,7 +146,7 @@ if ENVIRONMENT == 'development':
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
             'OPTIONS': {
-                'timeout': 20,  # wait up to 20 seconds if the DB is locked
+                'timeout': 20,
             }
         }
     }
@@ -155,46 +156,63 @@ else:
         'default': dj_database_url.parse(env('DATABASE_URL'))
     }
 
-# Password validation
-# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
+# -------------------------
+# Authentication
+# -------------------------
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_LOGIN_METHODS = {"username", "email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "OAUTH_PKCE_ENABLED": True,
+        "APP": {
+            "client_id": env("GOOGLE_CLIENT_ID"),
+            "secret": env("GOOGLE_CLIENT_SECRET"),
+            "key": "",
+        }
+    },
+    "github": {
+        "SCOPE": ["user", "user:email"],
+        "APP": {
+            "client_id": env("GITHUB_CLIENT_ID"),
+            "secret": env("GITHUB_CLIENT_SECRET"),
+            "key": "",
+        }
+    }
+}
 
-LANGUAGE_CODE = 'en-us'
+# -------------------------
+# Email
+# -------------------------
 
-TIME_ZONE = 'UTC'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = env('EMAIL_ADDRESS')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 
-USE_I18N = True
+DEFAULT_FROM_EMAIL = env('EMAIL_ADDRESS')
 
-USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
+# -------------------------
+# Static & Media
+# -------------------------
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
-
-# settings.py
 if ENVIRONMENT == 'development':
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -206,64 +224,24 @@ else:
         'MEDIA_TAG': 'media',
         'INVALID_VIDEO_ERROR_MESSAGE': 'Please upload a valid video file.',
         'EXCLUDE_DELETE_ORPHANED_MEDIA_PATHS': (),
-        'STATICFILES_MANIFEST_ROOT': None
     }
-    MEDIA_URL = '/media/'  
+    MEDIA_URL = '/media/'
 
-    
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST='smtp.gmail.com'
-EMAIL_HOST_USER=env('EMAIL_ADDRESS')
-EMAIL_HOST_PASSWORD=env('EMAIL_HOST_PASSWORD')
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-DEFAULT_FROM_EMAIL=f"chatapp(env('EMAIL_HOST_PASSWORD'))"
-ACCOUNT_EMAIL_SUBJECT_PREFIX=''
-
-ACCOUNT_LOGIN_METHODS = {'email', 'username'}
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
-
-
-# Add this to your settings.py to debug Redis connection
-import logging
-logger = logging.getLogger('channels_redis')
-logger.setLevel(logging.DEBUG)
-
-
-ACCOUNT_LOGIN_METHODS = {"username", "email"}
-ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory' 
-
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'SCOPE': ['profile', 'email'],
-        'AUTH_PARAMS': {'access_type': 'online'},
-        'OAUTH_PKCE_ENABLED': True,
-        'APP': {
-            'client_id': env('GOOGLE_CLIENT_ID'),
-            'secret': env('GOOGLE_CLIENT_SECRET'),
-            'key': ''
-        }
-    },
-    "github": {
-        "SCOPE": ["user", "user:email"],
-        "APP": {
-            "client_id": env('GITHUB_CLIENT_ID'),
-            "secret": env('GITHUB_CLIENT_SECRET'),
-            "key": ""
-        }
-    }
-}
-
-# Tell Django it's behind a proxy (Render) and to trust HTTPS
+# -------------------------
+# Render HTTPS fix
+# -------------------------
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-
-if os.environ.get("ENVIRONMENT") == "production":
+if ENVIRONMENT == "production":
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = True
+
+# -------------------------
+# Redis Debug Logs
+# -------------------------
+import logging
+logger = logging.getLogger("channels_redis")
+logger.setLevel(logging.DEBUG)
