@@ -21,7 +21,8 @@ class ChatroomConsumer(AsyncWebsocketConsumer):
             await self.close(code=1011)  # Internal error code
         except Exception as e:
             print(f"[ERROR] Connection failed: {e}")
-            await self.close(code=1011)
+            await self.close()
+
 
     async def _connect_internal(self):
         """Internal connection method"""
